@@ -7,7 +7,7 @@ import java.util.List;
 public class Evaluator {
 	
 	public Value evaluate(List<LangObject> langObjects) {
-		
+		Value last = null;
 	}
 	
 	private Value evaluate(LangObject langObject) {
