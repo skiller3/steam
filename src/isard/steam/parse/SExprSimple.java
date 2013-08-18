@@ -10,12 +10,12 @@ import java.util.List;
 
 public class SExprSimple implements SExpr {
 	
-	private List<LangObject> parts = new ArrayList<LangObject>();
+	private List<ParseObject> parts = new ArrayList<ParseObject>();
 	
 	public SExprSimple() {}
 	
 	@Override
-	public List<LangObject> getParts() {
+	public List<ParseObject> getParts() {
 		return Collections.unmodifiableList(parts);
 	}
 	
@@ -28,14 +28,14 @@ public class SExprSimple implements SExpr {
 	public List<Token> getTokens() {
 		List<Token> tokens = new ArrayList<Token>();
 		tokens.add(new Token("(", TokenType.OPEN_PARENTHESIS));
-		for (LangObject langObject : parts) {
+		for (ParseObject langObject : parts) {
 			tokens.addAll(langObject.getTokens());
 		}
 		tokens.add(new Token(")", TokenType.CLOSE_PARENTHESIS));
 		return tokens;
 	}
 	
-	public void addPart(LangObject langObject) {
+	public void addPart(ParseObject langObject) {
 		parts.add(langObject);
 	}
 }

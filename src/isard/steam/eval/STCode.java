@@ -1,20 +1,20 @@
 package isard.steam.eval;
 
 import isard.steam.Utils;
-import isard.steam.parse.LangObject;
+import isard.steam.parse.ParseObject;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class STCode {
 	
-	private List<LangObject> langObjects;
+	private List<ParseObject> langObjects;
 	
-	public STCode(List<LangObject> langObjects) {
-		this.langObjects = new ArrayList<LangObject>(langObjects);
+	public STCode(List<ParseObject> langObjects) {
+		this.langObjects = new ArrayList<ParseObject>(langObjects);
 	}
 	
-	public List<LangObject> getLangObjects() {
+	public List<ParseObject> getLangObjects() {
 		return langObjects;
 	}
 	

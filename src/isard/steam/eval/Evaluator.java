@@ -2,7 +2,7 @@ package isard.steam.eval;
 
 import isard.steam.Utils;
 import isard.steam.parse.Comment;
-import isard.steam.parse.LangObject;
+import isard.steam.parse.ParseObject;
 import isard.steam.parse.SExpr;
 import isard.steam.parse.Symbol;
 import isard.steam.token.Token;
@@ -21,13 +21,13 @@ public class Evaluator {
 	
 	private static final Pattern NUMBER_PATTERN = Pattern.compile("^[0-9]+\\.?[0-9]*$");
 	
-	public Value evaluate(List<LangObject> langObjects, Stack<Environment> envStack) {
+	public Value evaluate(List<ParseObject> langObjects, Stack<Environment> envStack) {
 		Value last = null;
-		for (LangObject langObject : langObjects) last = evaluate(langObject, envStack);
+		for (ParseObject langObject : langObjects) last = evaluate(langObject, envStack);
 		return last;
 	}
 	
-	private Value evaluate(LangObject langObject, Stack<Environment> envStack) {
+	private Value evaluate(ParseObject langObject, Stack<Environment> envStack) {
 		if (langObject instanceof Comment) {
 			return evaluate((Comment)langObject, envStack);
 		}
@@ -104,13 +104,13 @@ public class Evaluator {
 	}
 	
 	private Value handleCode(SExpr sexpr) {
-		List<LangObject> langObjects = new ArrayList<LangObject>(sexpr.getParts());
+		List<ParseObject> langObjects = new ArrayList<ParseObject>(sexpr.getParts());
 		if (langObjects.size() > 0) langObjects.remove(0);
 		return new Value(new STCode(langObjects));
 	}
 	
 	private Value handleDef(SExpr sexpr, Stack<Environment> envStack) {
-		List<LangObject> parts = Utils.filterComments(sexpr.getParts());
+		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 3) {
 			throw new EvaluatorException("Invalid def syntax: " + sexpr);
 		}
@@ -255,7 +255,7 @@ public class Evaluator {
 			}
 		}
 		
-		List<LangObject> parts = sexpr.getParts();
+		List<ParseObject> parts = sexpr.getParts();
 		if (parts.size() != 2) {
 			String msg = "Invalid bean-shell syntax: " + sexpr;
 			throw new EvaluatorException(msg);
@@ -286,14 +286,14 @@ public class Evaluator {
 	}
 	
 	private List<Value> evaluateTail(SExpr sexpr, Stack<Environment> envStack) {
-		List<LangObject> parts = new ArrayList<LangObject>(sexpr.getParts());
+		List<ParseObject> parts = new ArrayList<ParseObject>(sexpr.getParts());
 		parts.remove(0);
 		return evaluateEach(parts, envStack);
 	}
 	
-	private List<Value> evaluateEach(List<LangObject> langObjects, Stack<Environment> envStack) {
+	private List<Value> evaluateEach(List<ParseObject> langObjects, Stack<Environment> envStack) {
 		List<Value> values = new ArrayList<Value>(langObjects.size());
-		for (LangObject langObject : langObjects) {
+		for (ParseObject langObject : langObjects) {
 			values.add(evaluate(langObject, envStack));
 		}
 		return values;

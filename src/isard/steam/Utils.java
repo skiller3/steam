@@ -1,7 +1,7 @@
 package isard.steam;
 
 import isard.steam.parse.Comment;
-import isard.steam.parse.LangObject;
+import isard.steam.parse.ParseObject;
 import isard.steam.parse.SExpr;
 import isard.steam.parse.SExprSimple;
 import isard.steam.parse.Symbol;
@@ -16,11 +16,11 @@ public class Utils {
 		return o1 == o2 || (o1 != null && o2 != null && o1.equals(o2));
 	}
 	
-	public static String nicelyFormat(List<LangObject> langObjects) {
+	public static String nicelyFormat(List<ParseObject> langObjects) {
 		boolean first = true;
 		StringBuilder buf = new StringBuilder();
 		
-		for (LangObject langObject : langObjects) {
+		for (ParseObject langObject : langObjects) {
 			if (!first) buf.append(" ");
 			else first = false;
 			
@@ -38,16 +38,16 @@ public class Utils {
 		return buf.toString();
 	}
 	
-	public static List<LangObject> filterComments(Collection<? extends LangObject> langObjects) {
-		List<LangObject> filteredObjects = new ArrayList<LangObject>();
-		for (LangObject langObject : langObjects)
+	public static List<ParseObject> filterComments(Collection<? extends ParseObject> langObjects) {
+		List<ParseObject> filteredObjects = new ArrayList<ParseObject>();
+		for (ParseObject langObject : langObjects)
 			if (!(langObject instanceof Comment)) filteredObjects.add(langObject);
 		return filteredObjects;
 	}
 	
 	public static SExpr stripComments(SExpr sexpr) {
 		SExprSimple strippedSExpr = new SExprSimple();
-		for (LangObject part : filterComments(sexpr.getParts()))
+		for (ParseObject part : filterComments(sexpr.getParts()))
 			strippedSExpr.addPart(part);
 		return strippedSExpr;
 	}
