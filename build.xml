@@ -2,12 +2,21 @@
 <project name="steam" default="main" basedir=".">
 
   <property name="src.dir" location="src" />
+  <property name="test.dir" location="test" />
   <property name="bin.dir" location="bin" />
   <property name="lib.dir" location="lib" />
 
-  <!-- Deletes the existing class output directory-->
+  <!-- Deletes all build output -->
   <target name="clean">
-    <delete dir="${bin.dir}"/>
+    <delete>
+      <fileset dir=".">
+	<exclude name="build.xml"/>
+	<exclude name="README.md"/>
+	<exclude name="${src.dir}"/>
+	<exclude name="${test.dir}"/>
+	<exclude name="${lib.dir}"/>
+      </fileset>
+    </delete>
   </target>
 
   <!-- Compiles all java code -->
