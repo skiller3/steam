@@ -1,8 +1,6 @@
 package isard.steam.parse;
 
-import isard.steam.Utils;
 import isard.steam.token.Token;
-import isard.steam.token.TokenType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,39 +22,16 @@ public class Parser {
 		}
 	}
 	
-	private static class SExprImpl implements SExpr {
-		private List<LangObject> parts = new ArrayList<LangObject>();
-		public SExprImpl() {}
-		@Override
-		public List<LangObject> getParts() {
-			return parts;
-		}
-		@Override
-		public String getText() {
-			return Utils.nicelyFormat(parts);
-		}
-		@Override
-		public List<Token> getTokens() {
-			List<Token> tokens = new ArrayList<Token>();
-			tokens.add(new Token("(", TokenType.OPEN_PARENTHESIS));
-			for (LangObject langObject : parts) {
-				tokens.addAll(langObject.getTokens());
-			}
-			tokens.add(new Token(")", TokenType.CLOSE_PARENTHESIS));
-			return tokens;
-		}
-	}
-	
 	private static class StateMachine {
 		
 		private List<Token> tokens;
 		private List<LangObject> langObjects;
-		private Stack<SExprImpl> sExprStack;
+		private Stack<SExprSimple> sExprStack;
 		
 		public StateMachine(List<Token> tokens) {
 			this.tokens = new ArrayList<Token>(tokens);
 			this.langObjects = new ArrayList<LangObject>();
-			this.sExprStack = new Stack<SExprImpl>();
+			this.sExprStack = new Stack<SExprSimple>();
 		}
 		
 		public List<LangObject> parse() {
@@ -69,47 +44,35 @@ public class Parser {
 			case COMMENT: 
 				Comment comment = new Comment(token);
 				if (sExprStack.size() > 0) 
-					sExprStack.peek().parts.add(comment);
+					sExprStack.peek().addPart(comment);
 				else 
 					langObjects.add(comment);
 				break;
 			case OPEN_PARENTHESIS:
-				sExprStack.push(new SExprImpl());
+				sExprStack.push(new SExprSimple());
 				break;
 			case CLOSE_PARENTHESIS:
 				if (sExprStack.size() < 1) {
 					String msg = "Unmatched closing parenthesis encountered";
 					throw new ParserException(msg);
 				}
-				SExprImpl sExpr = sExprStack.pop();
+				SExprSimple sExpr = sExprStack.pop();
 				if (sExprStack.size() > 0) 
-					sExprStack.peek().parts.add(sExpr);
+					sExprStack.peek().addPart(sExpr);
 				else
 					langObjects.add(sExpr);
 				break;
 			case DOUBLE_QUOTE_STRING_LITERAL:
-				if (sExprStack.size() < 1) {
-					String msg = "String literal " + token.getCode() + " not embedded in " +
-							"valid expression";
-					throw new ParserException(msg);
-				}
-				sExprStack.peek().parts.add(new Symbol(token));
+				if (sExprStack.size() < 1) langObjects.add(new Symbol(token));
+				else sExprStack.peek().addPart(new Symbol(token));
 				break;
 			case SINGLE_QUOTE_STRING_LITERAL:
-				if (sExprStack.size() < 1) {
-					String msg = "String literal " + token.getCode() + " not embedded in " +
-							"valid expression";
-					throw new ParserException(msg);
-				}
-				sExprStack.peek().parts.add(new Symbol(token));
+				if (sExprStack.size() < 1) langObjects.add(new Symbol(token));
+				else sExprStack.peek().addPart(new Symbol(token));
 				break;
 			default:
-				if (sExprStack.size() < 1) {
-					String msg = "Symbol " + token.getCode() + " not embedded in " +
-							"valid expression";
-					throw new ParserException(msg);
-				}
-				sExprStack.peek().parts.add(new Symbol(token));
+				if (sExprStack.size() < 1) langObjects.add(new Symbol(token));
+				else sExprStack.peek().addPart(new Symbol(token));
 				break;
 			}
 			

@@ -3,8 +3,11 @@ package isard.steam;
 import isard.steam.parse.Comment;
 import isard.steam.parse.LangObject;
 import isard.steam.parse.SExpr;
+import isard.steam.parse.SExprSimple;
 import isard.steam.parse.Symbol;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class Utils {
@@ -32,6 +35,31 @@ public class Utils {
 				   .append(")");
 		}
 		
+		return buf.toString();
+	}
+	
+	public static List<LangObject> filterComments(Collection<? extends LangObject> langObjects) {
+		List<LangObject> filteredObjects = new ArrayList<LangObject>();
+		for (LangObject langObject : langObjects)
+			if (!(langObject instanceof Comment)) filteredObjects.add(langObject);
+		return filteredObjects;
+	}
+	
+	public static SExpr stripComments(SExpr sexpr) {
+		SExprSimple strippedSExpr = new SExprSimple();
+		for (LangObject part : filterComments(sexpr.getParts()))
+			strippedSExpr.addPart(part);
+		return strippedSExpr;
+	}
+	
+	public static String join(Collection<? extends Object> objects, String sep) {
+		StringBuilder buf = new StringBuilder();
+		boolean first = true;
+		for (Object o : objects) {
+			if (first) first = false;
+			else buf.append(sep);
+			buf.append(String.valueOf(o));
+		}
 		return buf.toString();
 	}
 }

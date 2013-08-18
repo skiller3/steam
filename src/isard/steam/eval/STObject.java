@@ -1,32 +1,42 @@
 package isard.steam.eval;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class STObject {
 	
-	private STClass stClass;
 	private Map<String,STObject> fields;
+	private Object javaObject;
 	
-	public STObject(STClass stClass) {
-		this.stClass = stClass;
-		this.fields = new LinkedHashMap<String,STObject>();
-	}
-	
-	public STObject(STClass stClass, Map<String,STObject> fields) {
-		this.stClass = stClass;
+	public STObject(Map<String,STObject> fields) {
 		this.fields = new LinkedHashMap<String,STObject>(fields);
 	}
 	
-	public void addField(String name, STObject value) {
-		fields.put(name, value);
-	}
-	
-	public STClass getSTClass() {
-		return stClass;
+	public STObject(Object javaObject) {
+		this.javaObject = javaObject;
 	}
 	
 	public Map<String,STObject> getFields() {
 		return fields;
+	}
+	
+	public Object getJavaObject() {
+		return javaObject;
+	}
+	
+	@Override
+	public String toString() {
+		if (javaObject != null) {
+			if (javaObject instanceof String || javaObject instanceof BigDecimal) {
+				return javaObject.toString();
+			}
+			else {
+				return "Java Wrapper: {" + javaObject.getClass().getName() + "}{" + 
+						javaObject.toString() + "}";
+			}
+		}
+			
+		return "UNKNOWN";
 	}
 }
