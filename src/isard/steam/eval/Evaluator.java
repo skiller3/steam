@@ -277,11 +277,11 @@ public class Evaluator {
 		}
 		
 		try {
-			Object retValue = beanShellInterp.get("_RETVALUE_");
+			Object retValue = beanShellInterp.get("_RET_");
 			if (retValue == null) return Value.NIL;
 			return new Value(new STObject(retValue));
 		} catch (Throwable t) {
-			throw new EvaluatorException("Could not extract _RETVALUE_ variable from bean shell.");
+			throw new EvaluatorException("Could not extract _RET_ variable from bean shell.");
 		}
 	}
 	

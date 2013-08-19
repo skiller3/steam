@@ -9,7 +9,7 @@ import java.util.Stack;
 public class Parser {
 	
 	private StateMachine stateMachine = new StateMachine();
-	private ParseState parseState = ParseState.NO_TOKENS_BUFFERED;
+	private ParseState parseState = ParseState.NO_SEXPRS_BUFFERED;
 	
 	public Parser() {}
 	
@@ -26,10 +26,10 @@ public class Parser {
 		ParseObject parseObject = stateMachine.processNext(token);
 		if (parseObject != null) {
 			((Queue<ParseObject>)outputQueue).add(parseObject);
-			parseState = ParseState.NO_TOKENS_BUFFERED;
+			parseState = ParseState.NO_SEXPRS_BUFFERED;
 		}
 		else {
-			parseState = ParseState.TOKENS_BUFFERED;
+			parseState = ParseState.SEXPRS_BUFFERED;
 		}
 	}
 	

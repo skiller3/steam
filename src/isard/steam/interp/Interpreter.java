@@ -24,7 +24,7 @@ public class Interpreter {
 		LinkedList<ParseObject> parserOutput = new LinkedList<ParseObject>();
 		for (Token token : tokens) {
 			parser.parse(token, parserOutput);
-			if (ParseState.NO_TOKENS_BUFFERED == parser.getParseState()) {
+			if (ParseState.NO_SEXPRS_BUFFERED == parser.getParseState()) {
 				lastValue = evaluator.evaluate(parserOutput, envStack);
 			}
 			parserOutput.clear();

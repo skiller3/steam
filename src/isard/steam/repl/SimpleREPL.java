@@ -11,8 +11,8 @@ public class SimpleREPL {
 	
 	private static final String TERMINATE_SIGNAL = "#exit";
 	private static final String DELIMITER = "\n";
-	private static final String NEW_INPUT_PROMPT = ">>>>";
-	private static final String CONT_INPUT_PROMPT = "++++";
+	private static final String NEW_INPUT_PROMPT = ">>>> ";
+	private static final String CONT_INPUT_PROMPT = "\t++++ ";
 	
 	public static void main(String [] args) {
 		Interpreter interpreter = new Interpreter();
@@ -22,7 +22,7 @@ public class SimpleREPL {
 		Scanner scanner = new Scanner(System.in);
 		scanner.useDelimiter(DELIMITER);
 		
-		System.out.println(NEW_INPUT_PROMPT);
+		System.out.print(NEW_INPUT_PROMPT);
 		
 		String input = null;
 		while (!(input = scanner.next()).startsWith(TERMINATE_SIGNAL)) {
@@ -30,17 +30,17 @@ public class SimpleREPL {
 				interpreter.interpret(input, envStack);
 				ParseState parseState = interpreter.getParserState();
 				switch (parseState) {
-					case NO_TOKENS_BUFFERED:
+					case NO_SEXPRS_BUFFERED:
 						System.out.println(String.valueOf(interpreter.getLastValue()));
-						System.out.println(NEW_INPUT_PROMPT);
+						System.out.print(NEW_INPUT_PROMPT);
 						break;
-					case TOKENS_BUFFERED:
-						System.out.println(CONT_INPUT_PROMPT);
+					case SEXPRS_BUFFERED:
+						System.out.print(CONT_INPUT_PROMPT);
 						break;
 				}
 			} catch (Throwable t) {
 				t.printStackTrace(System.err);
-				System.out.println(NEW_INPUT_PROMPT);
+				System.out.print(NEW_INPUT_PROMPT);
 			}
 		}
 		

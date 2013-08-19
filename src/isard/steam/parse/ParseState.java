@@ -1,5 +1,5 @@
 package isard.steam.parse;
 
 public enum ParseState {
-	TOKENS_BUFFERED, NO_TOKENS_BUFFERED 
+	SEXPRS_BUFFERED, NO_SEXPRS_BUFFERED 
 }
