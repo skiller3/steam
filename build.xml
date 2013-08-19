@@ -8,9 +8,11 @@
 
   <!-- Deletes all build output -->
   <target name="clean">
-    <delete>
-      <fileset dir="." excludes="build.xml,README.md,${src.dir},${test.dir},${lib.dir}">
-      </fileset>
+    <delete includeemptydirs="true" quiet="true">
+      <fileset dir="${bin.dir}"/>
+    </delete>
+    <delete quiet="true">
+      <fileset dir="${basedir}" includes="**/*~" defaultexcludes="false"/>
     </delete>
   </target>
 
