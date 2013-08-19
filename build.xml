@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<project name="steam" default="main" basedir=".">
+<project name="steam" default="repl" basedir=".">
 
   <property name="src.dir" location="src" />
   <property name="test.dir" location="test" />
@@ -27,7 +27,13 @@
   </target>
 
   <target name="repl">
-    <description>Main target</description>
+    <description>Simple REPL Start-up Target</description>
+    <java classname="isard.steam.repl.SimpleREPL" fork="true">
+      <classpath>
+	<pathelement location="${lib.dir}/*.jar"/>
+	<pathelement path="${bin.dir}"/>
+      </classpath>
+    </java>
   </target>
 
 </project> 
