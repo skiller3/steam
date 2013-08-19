@@ -10,4 +10,18 @@ public class Comment extends ParseObjectBase {
 		super(token.getCode(), Arrays.asList(token));
 	}
 	
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof Comment) {
+			Comment oComment = (Comment)o;
+			if (getText().equals(oComment.getText()))
+				return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public int hashCode() {
+		return getText().hashCode();
+	}
 }

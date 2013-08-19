@@ -8,12 +8,28 @@ import isard.steam.parse.Symbol;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Utils {
 	
 	public static boolean equal(Object o1, Object o2) {
 		return o1 == o2 || (o1 != null && o2 != null && o1.equals(o2));
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <K,V> Map<K,V> zip(Collection<? extends K> keys, Collection<? extends V> values) {
+		if (keys.size() != values.size()) {
+			String msg = "Collections of keys and values must be the same size.";
+			throw new RuntimeException(msg);
+		}
+		Iterator<K> keyIter = (Iterator<K>)keys.iterator();
+		Iterator<V> valueIter = (Iterator<V>)values.iterator();
+		Map<K,V> map = new LinkedHashMap<K,V>();
+		while (keyIter.hasNext()) map.put(keyIter.next(), valueIter.next());
+		return map;
 	}
 	
 	public static String nicelyFormat(List<ParseObject> langObjects) {

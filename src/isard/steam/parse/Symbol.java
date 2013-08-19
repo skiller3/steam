@@ -10,4 +10,19 @@ public class Symbol extends ParseObjectBase {
 		super(token.getCode(), Arrays.asList(token));
 	}
 	
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof Symbol) {
+			Symbol oSymbol = (Symbol)o;
+			if (getText().equals(oSymbol.getText()))
+				return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public int hashCode() {
+		return getText().hashCode();
+	}
+	
 }

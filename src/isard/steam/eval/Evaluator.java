@@ -9,6 +9,7 @@ import isard.steam.token.Token;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map.Entry;
@@ -88,7 +89,10 @@ public class Evaluator {
 		if (keyword != null) {
 			switch (keyword) {
 			case CODE: 			value = handleCode(sexpr);					break;
+			case EVAL:			value = handleEval(sexpr, envStack);		break;
 			case DEF:			value = handleDef(sexpr, envStack);			break;
+			case MACRO:			value = handleMacro(sexpr, envStack);		break;
+			case EXPAND:		value = handleExpand(sexpr, envStack);		break;
 			/*
 			case JAVA_CLASS:	value = handleJavaClass(sexpr, envStack);	break;
 			case JAVA_NEW:		value = handleJavaNew(sexpr, envStack);		break;
@@ -109,6 +113,18 @@ public class Evaluator {
 		return new Value(new STCode(langObjects));
 	}
 	
+	private Value handleEval(SExpr sexpr, Stack<Environment> envStack) {
+		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
+		if (parts.size() != 2) throw new EvaluatorException("Invalid eval syntax: " + sexpr);
+		Value codeValue = evaluate(parts.get(1), envStack);
+		STCode code = codeValue.getCode();
+		if (code == null) {
+			String msg = "Invalid eval syntax; Argument is not a code object: " + parts.get(1);
+			throw new EvaluatorException(msg);
+		}
+		return evaluate(code.getLangObjects(), envStack);
+	}
+	
 	private Value handleDef(SExpr sexpr, Stack<Environment> envStack) {
 		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 3) {
@@ -127,6 +143,62 @@ public class Evaluator {
 		envStack.peek().put(symbol.getText(), value);
 		
 		return value;
+	}
+	
+	private Value handleMacro(SExpr sexpr, Stack<Environment> envStack) {
+		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
+		if (parts.size() != 3) {
+			throw new EvaluatorException("Invalid macro syntax; exactly 2 parameters required: " + sexpr);
+		}
+		
+		List<Symbol> substitutableSymbols = new ArrayList<Symbol>();
+		try {
+			SExpr symbol_sexpr = (SExpr)parts.get(1);
+			List<Symbol> symbols = (List<Symbol>)(Object)symbol_sexpr.getParts();
+			for (Symbol symbol : symbols) substitutableSymbols.add(symbol);
+		} catch (Throwable t) {
+			String msg = "Invalid macro syntax; 1st parameter is not a list of symbols: " + parts.get(1);
+			throw new EvaluatorException(msg);
+		}
+		
+		STCode bodyCode = new STCode(Arrays.asList(parts.get(2)));
+		return new Value(new STMacro(substitutableSymbols, bodyCode));
+	}
+	
+	private Value handleExpand(SExpr sexpr, Stack<Environment> envStack) {
+		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
+		if (parts.size() != 3) {
+			throw new EvaluatorException("Invalid expand syntax: " + sexpr);
+		}
+		
+		List<ParseObject> substitutions = null;
+		try {
+			SExpr substitution_sexpr = (SExpr)parts.get(1);
+			substitutions = substitution_sexpr.getParts();
+		} catch (Throwable t) {
+			String msg = "Invalid expand syntax; 1st parameter is not a list of expressions: " + parts.get(1);
+			throw new EvaluatorException(msg);
+		}
+		
+		
+		Value macroValue = evaluate(parts.get(2), envStack);
+		
+		STMacro macro = macroValue.getMacro();
+		if (macro == null) {
+			String msg = "Invalid expand syntax; 2nd parameter is not a macro: " + parts.get(2);
+			throw new EvaluatorException(msg);
+		}
+		
+		if (substitutions.size() != macro.getSubstitutableSymbols().size()) {
+			String msg = "Invalid expand syntax; wrong number of expansion expressions: " + parts.get(1);
+			throw new EvaluatorException(msg);
+		}
+		
+		try {
+			return new Value(macro.expand(substitutions));
+		} catch (Throwable t) {
+			throw new EvaluatorException("Unable to expand: " + parts.get(2));
+		}
 	}
 	
 	/*

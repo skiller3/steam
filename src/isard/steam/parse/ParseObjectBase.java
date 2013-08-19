@@ -16,4 +16,7 @@ public abstract class ParseObjectBase implements ParseObject {
 	
 	public String getText() {return text;}
 	public List<Token> getTokens() {return tokens;}
+	
+	@Override
+	public String toString() {return getText();}
 }

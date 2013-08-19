@@ -5,6 +5,7 @@ import isard.steam.token.Token;
 import isard.steam.token.TokenType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,4 +39,22 @@ public class SExprSimple implements SExpr {
 	public void addPart(ParseObject langObject) {
 		parts.add(langObject);
 	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof SExpr) {
+			Object [] parts = this.parts.toArray();
+			Object [] oParts = ((SExpr)o).getParts().toArray();
+			return Arrays.equals(parts, oParts);
+		}
+		return false;
+	}
+	
+	@Override
+	public int hashCode() {
+		int code = 1;
+		for (ParseObject part : parts) code = code * 31 + part.hashCode();
+		return code;
+	}
+
 }
