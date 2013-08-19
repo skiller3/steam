@@ -9,22 +9,18 @@
   <!-- Deletes all build output -->
   <target name="clean">
     <delete>
-      <fileset dir=".">
-	<exclude name="build.xml"/>
-	<exclude name="README.md"/>
-	<exclude name="${src.dir}"/>
-	<exclude name="${test.dir}"/>
-	<exclude name="${lib.dir}"/>
+      <fileset dir="." excludes="build.xml,README.md,${src.dir},${test.dir},${lib.dir}">
       </fileset>
     </delete>
   </target>
 
   <!-- Compiles all java code -->
   <target name="build">
-     <javac srcdir="${src.dir}" destdir="${bin.dir}">
-      <classpath>
-	<fileset dir="${lib.dir}"><include name="**/*.jar"/></fileset>
-      </classpath>
+    <mkdir dir="bin"/>
+    <javac srcdir="${src.dir}" destdir="${bin.dir}">
+     <classpath>
+       <fileset dir="${lib.dir}"><include name="**/*.jar"/></fileset>
+     </classpath>
     </javac>
   </target>
 
