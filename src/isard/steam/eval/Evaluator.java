@@ -4,8 +4,10 @@ import isard.steam.Utils;
 import isard.steam.parse.Comment;
 import isard.steam.parse.ParseObject;
 import isard.steam.parse.SExpr;
+import isard.steam.parse.SExprSimple;
 import isard.steam.parse.Symbol;
 import isard.steam.token.Token;
+import isard.steam.token.TokenType;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -93,6 +95,7 @@ public class Evaluator {
 			case DEF:			value = handleDef(sexpr, envStack);			break;
 			case MACRO:			value = handleMacro(sexpr, envStack);		break;
 			case EXPAND:		value = handleExpand(sexpr, envStack);		break;
+			case DO:			value = handleDo(sexpr, envStack);			break;
 			/*
 			case JAVA_CLASS:	value = handleJavaClass(sexpr, envStack);	break;
 			case JAVA_NEW:		value = handleJavaNew(sexpr, envStack);		break;
@@ -101,16 +104,36 @@ public class Evaluator {
 			}
 		}
 		else {
-			throw new EvaluatorException("Unrecognized action: " + token.getCode());
+			// ------------------------------------------------------------
+			// Otherwise the first expression should evaluate to some macro
+			// that will be invoked on the remainder of the expressions
+			// ------------------------------------------------------------
+			List<ParseObject> parts = sexpr.getParts();
+			Value actionValue = evaluate(parts.get(0), envStack);
+			
+			STMacro macro = actionValue.getMacro();
+			if (macro == null) {
+				String msg = "Unrecognized action: " + parts.get(0);
+				throw new EvaluatorException(msg);
+			}
+			
+			STCode expandedCode = macro.expand(Utils.tail(parts));
+			
+			SExprSimple codeExpression = new SExprSimple();
+			codeExpression.addPart(new Symbol(new Token("code", TokenType.OTHER)));
+			for (ParseObject part : expandedCode.getParseObjects()) codeExpression.addPart(part);
+			SExprSimple evalExpression = new SExprSimple();
+			evalExpression.addPart(new Symbol(new Token("eval", TokenType.OTHER)));
+			evalExpression.addPart(codeExpression);
+			
+			value = evaluate(evalExpression, envStack);
 		}
 		
 		return value;
 	}
 	
 	private Value handleCode(SExpr sexpr) {
-		List<ParseObject> langObjects = new ArrayList<ParseObject>(sexpr.getParts());
-		if (langObjects.size() > 0) langObjects.remove(0);
-		return new Value(new STCode(langObjects));
+		return new Value(new STCode(Utils.tail(sexpr.getParts())));
 	}
 	
 	private Value handleEval(SExpr sexpr, Stack<Environment> envStack) {
@@ -122,7 +145,7 @@ public class Evaluator {
 			String msg = "Invalid eval syntax; Argument is not a code object: " + parts.get(1);
 			throw new EvaluatorException(msg);
 		}
-		return evaluate(code.getLangObjects(), envStack);
+		return evaluate(code.getParseObjects(), envStack);
 	}
 	
 	private Value handleDef(SExpr sexpr, Stack<Environment> envStack) {
@@ -199,6 +222,14 @@ public class Evaluator {
 		} catch (Throwable t) {
 			throw new EvaluatorException("Unable to expand: " + parts.get(2));
 		}
+	}
+	
+	private Value handleDo(SExpr sexpr, Stack<Environment> envStack) {
+		Value value = null;
+		envStack.push(new Environment());
+		value = evaluate(Utils.tail(sexpr.getParts()), envStack);
+		envStack.pop();
+		return value;
 	}
 	
 	/*
@@ -340,7 +371,7 @@ public class Evaluator {
 			throw new EvaluatorException(msg);
 		}
 		
-		String beanShellCode = Utils.nicelyFormat(tailValue.getCode().getLangObjects());
+		String beanShellCode = Utils.nicelyFormat(tailValue.getCode().getParseObjects());
 		try {
 			beanShellInterp.eval(beanShellCode);
 		} catch (Throwable t) {

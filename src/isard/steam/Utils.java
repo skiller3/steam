@@ -7,6 +7,7 @@ import isard.steam.parse.SExprSimple;
 import isard.steam.parse.Symbol;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -30,6 +31,12 @@ public class Utils {
 		Map<K,V> map = new LinkedHashMap<K,V>();
 		while (keyIter.hasNext()) map.put(keyIter.next(), valueIter.next());
 		return map;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T> List<T> tail(List<T> list) {
+		if (list.size() < 2) return new ArrayList<T>();
+		return (List<T>)Arrays.asList(Arrays.copyOfRange(list.toArray(), 1, list.size()));
 	}
 	
 	public static String nicelyFormat(List<ParseObject> langObjects) {

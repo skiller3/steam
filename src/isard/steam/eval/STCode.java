@@ -14,7 +14,7 @@ public class STCode {
 		this.langObjects = new ArrayList<ParseObject>(langObjects);
 	}
 	
-	public List<ParseObject> getLangObjects() {
+	public List<ParseObject> getParseObjects() {
 		return langObjects;
 	}
 	

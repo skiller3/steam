@@ -22,18 +22,10 @@ public class STMacro {
 	
 	public STCode expand(List<ParseObject> substitutions) {
 		Map<Symbol,ParseObject> substitutionMap = Utils.zip(substitutableSymbols, substitutions);
-		
-		List<ParseObject> originalObjects = bodyCode.getLangObjects();
+		List<ParseObject> originalObjects = bodyCode.getParseObjects();
 		List<ParseObject> expandedObjects = new ArrayList<ParseObject>(originalObjects.size());
-		for (ParseObject originalObject : originalObjects) {
-			if (substitutionMap.containsKey(originalObject)) {
-				ParseObject substitution = substitutionMap.get(originalObject);
-				expandedObjects.add(substitution);
-			}
-			else {
-				expandedObjects.add(originalObject);
-			}
-		}
+		for (ParseObject originalObject : originalObjects) 
+			expandedObjects.add(expand(originalObject, substitutionMap));
 		return new STCode(expandedObjects);
 	}
 	
@@ -44,7 +36,6 @@ public class STMacro {
 		}
 		else if (parseObject instanceof SExpr) {
 			List<ParseObject> parts = ((SExpr)parseObject).getParts();
-			List<ParseObject> expandedParts = new ArrayList<ParseObject>(parts.size());
 			SExprSimple expanded_sexpr = new SExprSimple();
 			for (ParseObject part : parts) expanded_sexpr.addPart(expand(part, substitutionMap));
 			expandedObject = expanded_sexpr;
