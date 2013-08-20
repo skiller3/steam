@@ -1,8 +1,8 @@
 package isard.steam.eval;
 
 public enum Keyword {
-	CODE, EVAL, DEF, MACRO, EXPAND, DO, HEAD, TAIL, FRONT, BACK,
-	HADD, TADD, CAT, /*JAVA_CLASS, JAVA_NEW,*/ JAVA;
+	CODE, EVAL, DEF, MACRO, EXPAND, DO, /*HEAD, TAIL, FRONT, BACK,
+	HADD, TADD, CAT, JAVA_CLASS, JAVA_NEW,*/ JAVA;
 	
 	public static Keyword fromCodeText(String codeText) {
 		return valueOf(codeText.replace("-", "_").toUpperCase());

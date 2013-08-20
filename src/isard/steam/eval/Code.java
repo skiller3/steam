@@ -6,11 +6,11 @@ import isard.steam.parse.ParseObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class STCode {
+public class Code implements Value {
 	
 	private List<ParseObject> langObjects;
 	
-	public STCode(List<ParseObject> langObjects) {
+	public Code(List<ParseObject> langObjects) {
 		this.langObjects = new ArrayList<ParseObject>(langObjects);
 	}
 	

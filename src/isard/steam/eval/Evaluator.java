@@ -53,15 +53,15 @@ public class Evaluator {
 		switch (token.getType()) {
 			case DOUBLE_QUOTE_STRING_LITERAL:
 				strValue = strValue.substring(1, strValue.length() - 1);
-				value = new Value(new STObject(strValue));
+				value = new JWrapper(strValue);
 				break;
 			case SINGLE_QUOTE_STRING_LITERAL:
 				strValue = strValue.substring(1, strValue.length() - 1);
-				value = new Value(new STObject(strValue));
+				value = new JWrapper(strValue);
 				break;
 			default:
 				if (NUMBER_PATTERN.matcher(strValue).find()) {
-					value = new Value(new STObject(new BigDecimal(strValue)));
+					value = new JWrapper(new BigDecimal(strValue));
 				}
 				else {
 					try {
@@ -109,15 +109,14 @@ public class Evaluator {
 			// that will be invoked on the remainder of the expressions
 			// ------------------------------------------------------------
 			List<ParseObject> parts = sexpr.getParts();
-			Value actionValue = evaluate(parts.get(0), envStack);
+			Value macroValue = evaluate(parts.get(0), envStack);
 			
-			STMacro macro = actionValue.getMacro();
-			if (macro == null) {
+			if (macroValue == null || !(macroValue instanceof Macro)) {
 				String msg = "Unrecognized action: " + parts.get(0);
 				throw new EvaluatorException(msg);
 			}
 			
-			STCode expandedCode = macro.expand(Utils.tail(parts));
+			Code expandedCode = ((Macro)macroValue).expand(Utils.tail(parts));
 			
 			SExprSimple codeExpression = new SExprSimple();
 			codeExpression.addPart(new Symbol(new Token("code", TokenType.OTHER)));
@@ -132,20 +131,19 @@ public class Evaluator {
 		return value;
 	}
 	
-	private Value handleCode(SExpr sexpr) {
-		return new Value(new STCode(Utils.tail(sexpr.getParts())));
+	private Code handleCode(SExpr sexpr) {
+		return new Code(Utils.tail(sexpr.getParts()));
 	}
 	
 	private Value handleEval(SExpr sexpr, Stack<Environment> envStack) {
 		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 2) throw new EvaluatorException("Invalid eval syntax: " + sexpr);
 		Value codeValue = evaluate(parts.get(1), envStack);
-		STCode code = codeValue.getCode();
-		if (code == null) {
+		if (codeValue == null || !(codeValue instanceof Code)) {
 			String msg = "Invalid eval syntax; Argument is not a code object: " + parts.get(1);
 			throw new EvaluatorException(msg);
 		}
-		return evaluate(code.getParseObjects(), envStack);
+		return evaluate(((Code)codeValue).getParseObjects(), envStack);
 	}
 	
 	private Value handleDef(SExpr sexpr, Stack<Environment> envStack) {
@@ -168,7 +166,8 @@ public class Evaluator {
 		return value;
 	}
 	
-	private Value handleMacro(SExpr sexpr, Stack<Environment> envStack) {
+	@SuppressWarnings("unchecked")
+	private Macro handleMacro(SExpr sexpr, Stack<Environment> envStack) {
 		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 3) {
 			throw new EvaluatorException("Invalid macro syntax; exactly 2 parameters required: " + sexpr);
@@ -184,11 +183,11 @@ public class Evaluator {
 			throw new EvaluatorException(msg);
 		}
 		
-		STCode bodyCode = new STCode(Arrays.asList(parts.get(2)));
-		return new Value(new STMacro(substitutableSymbols, bodyCode));
+		Code bodyCode = new Code(Arrays.asList(parts.get(2)));
+		return new Macro(substitutableSymbols, bodyCode);
 	}
 	
-	private Value handleExpand(SExpr sexpr, Stack<Environment> envStack) {
+	private Code handleExpand(SExpr sexpr, Stack<Environment> envStack) {
 		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 3) {
 			throw new EvaluatorException("Invalid expand syntax: " + sexpr);
@@ -206,11 +205,12 @@ public class Evaluator {
 		
 		Value macroValue = evaluate(parts.get(2), envStack);
 		
-		STMacro macro = macroValue.getMacro();
-		if (macro == null) {
+		if (macroValue == null || !(macroValue instanceof Macro)) {
 			String msg = "Invalid expand syntax; 2nd parameter is not a macro: " + parts.get(2);
 			throw new EvaluatorException(msg);
 		}
+		
+		Macro macro = (Macro)macroValue;
 		
 		if (substitutions.size() != macro.getSubstitutableSymbols().size()) {
 			String msg = "Invalid expand syntax; wrong number of expansion expressions: " + parts.get(1);
@@ -218,7 +218,7 @@ public class Evaluator {
 		}
 		
 		try {
-			return new Value(macro.expand(substitutions));
+			return macro.expand(substitutions);
 		} catch (Throwable t) {
 			throw new EvaluatorException("Unable to expand: " + parts.get(2));
 		}
@@ -342,17 +342,22 @@ public class Evaluator {
 		while (environments.hasMoreElements()) {
 			Environment env = environments.nextElement();
 			for (Entry<String,Value> entry : env.entrySet()) {
-				STObject stObject = entry.getValue().getObject();
-				if (stObject != null) {
-					Object javaObject = stObject.getJavaObject();
-					if (javaObject != null) {
-						String symbolName = entry.getKey();
-						try {
-							beanShellInterp.set(symbolName, javaObject);
-						} catch (Throwable t) {
-							String msg = "Failed to assign symbol " + symbolName + "in bean shell";
-							throw new EvaluatorException(msg, t);
-						}
+				String symbolName = entry.getKey();
+				Value value = entry.getValue();
+				if (value instanceof JWrapper) {
+					try {
+						beanShellInterp.set(symbolName, ((JWrapper)value).getJavaObject());
+					} catch (Throwable t) {
+						String msg = "Failed to assign symbol " + symbolName + "in bean shell";
+						throw new EvaluatorException(msg, t);
+					}
+				}
+				else {
+					try {
+						beanShellInterp.set(symbolName, value);
+					} catch (Throwable t) {
+						String msg = "Failed to assign symbol " + symbolName + "in bean shell";
+						throw new EvaluatorException(msg, t);
 					}
 				}
 			}
@@ -364,14 +369,14 @@ public class Evaluator {
 			throw new EvaluatorException(msg);
 		}
 		
-		Value tailValue = evaluate(parts.get(1), envStack);
-		if (tailValue.getCode() == null) {
+		Value codeValue = evaluate(parts.get(1), envStack);
+		if (codeValue == null || !(codeValue instanceof Code)) {
 			String msg = "Invalid bean-shell syntax: " + sexpr + ". Second part of expression must " +
 					"evaluate to a code object.";
 			throw new EvaluatorException(msg);
 		}
 		
-		String beanShellCode = Utils.nicelyFormat(tailValue.getCode().getParseObjects());
+		String beanShellCode = Utils.nicelyFormat(((Code)codeValue).getParseObjects());
 		try {
 			beanShellInterp.eval(beanShellCode);
 		} catch (Throwable t) {
@@ -382,24 +387,10 @@ public class Evaluator {
 		try {
 			Object retValue = beanShellInterp.get("_RET_");
 			if (retValue == null) return Value.NIL;
-			return new Value(new STObject(retValue));
+			return new JWrapper(retValue);
 		} catch (Throwable t) {
 			throw new EvaluatorException("Could not extract _RET_ variable from bean shell.");
 		}
-	}
-	
-	private List<Value> evaluateTail(SExpr sexpr, Stack<Environment> envStack) {
-		List<ParseObject> parts = new ArrayList<ParseObject>(sexpr.getParts());
-		parts.remove(0);
-		return evaluateEach(parts, envStack);
-	}
-	
-	private List<Value> evaluateEach(List<ParseObject> langObjects, Stack<Environment> envStack) {
-		List<Value> values = new ArrayList<Value>(langObjects.size());
-		for (ParseObject langObject : langObjects) {
-			values.add(evaluate(langObject, envStack));
-		}
-		return values;
 	}
 	
 	private Value dereferenceSymbol(String symbolName, Stack<Environment> envStack) {
@@ -412,14 +403,6 @@ public class Evaluator {
 		throw new EvaluatorException("Could not dereference symbol: " + symbolName);
 	}
 	
-	@SuppressWarnings("unchecked")
-	private <T> T extractJObjectFromRefValue(Value value) {
-		try {
-			return (T)value.getObject().getJavaObject();
-		} catch (Throwable t) {
-			throw new EvaluatorException("Invalid java object reference value: " + value);
-		}
-	}
 	
 	@SuppressWarnings("serial")
 	public static class EvaluatorException extends RuntimeException {

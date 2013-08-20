@@ -10,23 +10,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class STMacro {
+public class Macro implements Value {
 	
 	private List<Symbol> substitutableSymbols;
-	private STCode bodyCode;
+	private Code bodyCode;
 	
-	public STMacro(List<Symbol> substitutableSymbols, STCode bodyCode) {
+	public Macro(List<Symbol> substitutableSymbols, Code bodyCode) {
 		this.substitutableSymbols = substitutableSymbols;
 		this.bodyCode = bodyCode;
 	}
 	
-	public STCode expand(List<ParseObject> substitutions) {
+	public Code expand(List<ParseObject> substitutions) {
 		Map<Symbol,ParseObject> substitutionMap = Utils.zip(substitutableSymbols, substitutions);
 		List<ParseObject> originalObjects = bodyCode.getParseObjects();
 		List<ParseObject> expandedObjects = new ArrayList<ParseObject>(originalObjects.size());
 		for (ParseObject originalObject : originalObjects) 
 			expandedObjects.add(expand(originalObject, substitutionMap));
-		return new STCode(expandedObjects);
+		return new Code(expandedObjects);
 	}
 	
 	private static ParseObject expand(ParseObject parseObject, Map<Symbol,ParseObject> substitutionMap) {
@@ -50,7 +50,7 @@ public class STMacro {
 		return substitutableSymbols;
 	}
 	
-	public STCode getBodyCode() {
+	public Code getBodyCode() {
 		return bodyCode;
 	}
 	
