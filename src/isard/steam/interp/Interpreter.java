@@ -4,17 +4,14 @@ import isard.steam.eval.Environment;
 import isard.steam.eval.Evaluator;
 import isard.steam.eval.Value;
 import isard.steam.parse.ParseObject;
-import isard.steam.parse.Parser;
 import isard.steam.parse.ParseState;
+import isard.steam.parse.Parser;
 import isard.steam.token.Token;
 import isard.steam.token.Tokenizer;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Stack;
 
 public class Interpreter {
 
@@ -23,8 +20,14 @@ public class Interpreter {
 	private Evaluator evaluator = new Evaluator();
 	private Parser parser = new Parser();
 	private Value lastValue = Value.NIL;
+	private Environment rootEnv = new Environment();
 	
-	public void interpret(String code, Stack<Environment> envStack) {
+	public Interpreter() {loadCoreAPI();}
+	
+	public void interpret(String code, LinkedList<Environment> envStack) {
+		envStack = new LinkedList<Environment>(envStack);
+		envStack.addLast(rootEnv);
+		
 		List<Token> tokens = new Tokenizer().tokenize(code);
 		LinkedList<ParseObject> parserOutput = new LinkedList<ParseObject>();
 		for (Token token : tokens) {
@@ -39,13 +42,17 @@ public class Interpreter {
 	public ParseState getParserState() {return parser.getParseState();}
 	public Value getLastValue() {return lastValue;}
 	
-	private String loadCoreAPI() {
+	private void loadCoreAPI() {
 		InputStream is = null;
 		try {
-			is = getClass().getClassLoader().getResourceAsStream(CORE_API_FILE_NAME);
-			byte [] core_api_code = new byte[20000];
-			is.read(core_api_code);
-			return new String(core_api_code);
+			is = getClass().getResourceAsStream(CORE_API_FILE_NAME);
+			StringBuilder buf = new StringBuilder();
+			int next = -1;
+			while ((next = is.read()) != -1) {
+				buf.append((char)next);
+			}
+			
+			interpret(buf.toString(), new LinkedList<Environment>());
 		} catch (Throwable t) {
 			String msg = "Unable to load core steam API code.";
 			throw new RuntimeException(msg, t);

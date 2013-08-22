@@ -2,10 +2,11 @@ package isard.steam.repl;
 
 import isard.steam.eval.Environment;
 import isard.steam.interp.Interpreter;
+
 import isard.steam.parse.ParseState;
 
+import java.util.LinkedList;
 import java.util.Scanner;
-import java.util.Stack;
 
 public class SimpleREPL {
 	
@@ -16,7 +17,7 @@ public class SimpleREPL {
 	
 	public static void main(String [] args) {
 		Interpreter interpreter = new Interpreter();
-		Stack<Environment> envStack = new Stack<Environment>();
+		LinkedList<Environment> envStack = new LinkedList<Environment>();
 		envStack.push(new Environment());
 		
 		Scanner scanner = new Scanner(System.in);

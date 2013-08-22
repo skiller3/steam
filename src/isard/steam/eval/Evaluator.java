@@ -12,10 +12,9 @@ import isard.steam.token.TokenType;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Enumeration;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Stack;
 import java.util.regex.Pattern;
 
 import bsh.Interpreter;
@@ -24,13 +23,13 @@ public class Evaluator {
 	
 	private static final Pattern NUMBER_PATTERN = Pattern.compile("^[0-9]+\\.?[0-9]*$");
 	
-	public Value evaluate(List<ParseObject> langObjects, Stack<Environment> envStack) {
+	public Value evaluate(List<ParseObject> langObjects, LinkedList<Environment> envStack) {
 		Value last = null;
 		for (ParseObject langObject : langObjects) last = evaluate(langObject, envStack);
 		return last;
 	}
 	
-	private Value evaluate(ParseObject langObject, Stack<Environment> envStack) {
+	private Value evaluate(ParseObject langObject, LinkedList<Environment> envStack) {
 		if (langObject instanceof Comment) {
 			return evaluate((Comment)langObject, envStack);
 		}
@@ -40,11 +39,11 @@ public class Evaluator {
 		return evaluate((SExpr)langObject, envStack);
 	}
 	
-	private Value evaluate(Comment comment, Stack<Environment> envStack) {
+	private Value evaluate(Comment comment, LinkedList<Environment> envStack) {
 		return null;
 	}
 	
-	private Value evaluate(Symbol symbol, Stack<Environment> envStack) {
+	private Value evaluate(Symbol symbol, LinkedList<Environment> envStack) {
 		
 		Token token = symbol.getTokens().get(0);
 		String strValue = token.getCode();
@@ -75,7 +74,7 @@ public class Evaluator {
 		return value;
 	}
 	
-	private Value evaluate(SExpr sexpr, Stack<Environment> envStack) {
+	private Value evaluate(SExpr sexpr, LinkedList<Environment> envStack) {
 		if (sexpr.getParts().size() < 1) return Value.NIL;
 		
 		// remember, the "ACTION" corresponds to the 2nd token, since the 1st token is 
@@ -96,6 +95,7 @@ public class Evaluator {
 			case MACRO:			value = handleMacro(sexpr, envStack);		break;
 			case EXPAND:		value = handleExpand(sexpr, envStack);		break;
 			case DO:			value = handleDo(sexpr, envStack);			break;
+			case FUN:			value = handleFun(sexpr, envStack);			break;
 			/*
 			case JAVA_CLASS:	value = handleJavaClass(sexpr, envStack);	break;
 			case JAVA_NEW:		value = handleJavaNew(sexpr, envStack);		break;
@@ -109,23 +109,18 @@ public class Evaluator {
 			// that will be invoked on the remainder of the expressions
 			// ------------------------------------------------------------
 			List<ParseObject> parts = sexpr.getParts();
-			Value macroValue = evaluate(parts.get(0), envStack);
+			Value actionValue = evaluate(parts.get(0), envStack);
 			
-			if (macroValue == null || !(macroValue instanceof Macro)) {
+			List<ParseObject> tailParts = Utils.tail(parts);
+			
+			if (actionValue instanceof Macro) 
+				value = evaluateMacro((Macro)actionValue, envStack, tailParts);
+			else if (actionValue instanceof Fun)
+				value = evaluateFun((Fun)actionValue, envStack, tailParts);
+			else {
 				String msg = "Unrecognized action: " + parts.get(0);
 				throw new EvaluatorException(msg);
 			}
-			
-			Code expandedCode = ((Macro)macroValue).expand(Utils.tail(parts));
-			
-			SExprSimple codeExpression = new SExprSimple();
-			codeExpression.addPart(new Symbol(new Token("code", TokenType.OTHER)));
-			for (ParseObject part : expandedCode.getParseObjects()) codeExpression.addPart(part);
-			SExprSimple evalExpression = new SExprSimple();
-			evalExpression.addPart(new Symbol(new Token("eval", TokenType.OTHER)));
-			evalExpression.addPart(codeExpression);
-			
-			value = evaluate(evalExpression, envStack);
 		}
 		
 		return value;
@@ -135,7 +130,7 @@ public class Evaluator {
 		return new Code(Utils.tail(sexpr.getParts()));
 	}
 	
-	private Value handleEval(SExpr sexpr, Stack<Environment> envStack) {
+	private Value handleEval(SExpr sexpr, LinkedList<Environment> envStack) {
 		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 2) throw new EvaluatorException("Invalid eval syntax: " + sexpr);
 		Value codeValue = evaluate(parts.get(1), envStack);
@@ -146,7 +141,7 @@ public class Evaluator {
 		return evaluate(((Code)codeValue).getParseObjects(), envStack);
 	}
 	
-	private Value handleDef(SExpr sexpr, Stack<Environment> envStack) {
+	private Value handleDef(SExpr sexpr, LinkedList<Environment> envStack) {
 		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 3) {
 			throw new EvaluatorException("Invalid def syntax: " + sexpr);
@@ -167,7 +162,7 @@ public class Evaluator {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private Macro handleMacro(SExpr sexpr, Stack<Environment> envStack) {
+	private Macro handleMacro(SExpr sexpr, LinkedList<Environment> envStack) {
 		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 3) {
 			throw new EvaluatorException("Invalid macro syntax; exactly 2 parameters required: " + sexpr);
@@ -187,7 +182,7 @@ public class Evaluator {
 		return new Macro(substitutableSymbols, bodyCode);
 	}
 	
-	private Code handleExpand(SExpr sexpr, Stack<Environment> envStack) {
+	private Code handleExpand(SExpr sexpr, LinkedList<Environment> envStack) {
 		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
 		if (parts.size() != 3) {
 			throw new EvaluatorException("Invalid expand syntax: " + sexpr);
@@ -224,12 +219,41 @@ public class Evaluator {
 		}
 	}
 	
-	private Value handleDo(SExpr sexpr, Stack<Environment> envStack) {
+	private Value handleDo(SExpr sexpr, LinkedList<Environment> envStack) {
 		Value value = null;
 		envStack.push(new Environment());
 		value = evaluate(Utils.tail(sexpr.getParts()), envStack);
 		envStack.pop();
 		return value;
+	}
+	
+	private Value handleFun(SExpr sexpr, LinkedList<Environment> envStack) {
+		List<ParseObject> parts = Utils.filterComments(sexpr.getParts());
+		
+		if (parts.size() != 3) {
+			throw new EvaluatorException("Invalid fun syntax; exactly 2 parameters required: " + sexpr);
+		}
+		
+		SExpr param_sexpr = null;
+		try {
+			param_sexpr = (SExpr)parts.get(1);
+		} catch (Throwable t) {
+			String msg = "Invalid fun syntax; parameter symbols must be nested in '()' expression";
+			throw new EvaluatorException(msg);
+		}
+		
+		List<Symbol> parameterSymbols = new ArrayList<Symbol>();
+		for (ParseObject paramPart : param_sexpr.getParts()) {
+			if (paramPart instanceof Symbol) {
+				parameterSymbols.add((Symbol)paramPart);
+			}
+			else {
+				String msg = "Invalid fun syntax; " + paramPart + " is not a symbol.";
+				throw new EvaluatorException(msg);
+			}
+		}
+		
+		return new Fun(parameterSymbols, new Code(Arrays.asList(parts.get(2))));
 	}
 	
 	/*
@@ -334,13 +358,11 @@ public class Evaluator {
 	}
 	*/
 	
-	private Value handleJava(SExpr sexpr, Stack<Environment> envStack) {
+	private Value handleJava(SExpr sexpr, LinkedList<Environment> envStack) {
 		Interpreter beanShellInterp = new Interpreter();
 		
 		// Set-up variables in the interpreter.
-		Enumeration<Environment> environments = envStack.elements();
-		while (environments.hasMoreElements()) {
-			Environment env = environments.nextElement();
+		for (Environment env : envStack) {
 			for (Entry<String,Value> entry : env.entrySet()) {
 				String symbolName = entry.getKey();
 				Value value = entry.getValue();
@@ -378,22 +400,67 @@ public class Evaluator {
 		
 		String beanShellCode = Utils.nicelyFormat(((Code)codeValue).getParseObjects());
 		try {
-			beanShellInterp.eval(beanShellCode);
+			Object retValue = beanShellInterp.eval(beanShellCode);
+			if (retValue == null) return Value.NIL;
+			return new JWrapper(retValue);
 		} catch (Throwable t) {
 			String msg = "Failed to evaluate " + beanShellCode + " with bean shell.";
 			throw new EvaluatorException(msg, t);
 		}
 		
+//		try {
+//			beanShellInterp.
+//			beanShellInterp.get("_RET_");
+//			
+//		} catch (Throwable t) {
+//			throw new EvaluatorException("Could not extract _RET_ variable from bean shell.");
+//		}
+	}
+	
+	private Value evaluateMacro(Macro macro, LinkedList<Environment> envStack, List<ParseObject> tailObjects) {
+		Code expandedCode = macro.expand(Utils.filterComments(tailObjects));
+		
+		SExprSimple codeExpression = new SExprSimple();
+		codeExpression.addPart(new Symbol(new Token("code", TokenType.OTHER)));
+		for (ParseObject part : expandedCode.getParseObjects()) codeExpression.addPart(part);
+		SExprSimple evalExpression = new SExprSimple();
+		evalExpression.addPart(new Symbol(new Token("eval", TokenType.OTHER)));
+		evalExpression.addPart(codeExpression);
+		
+		return evaluate(evalExpression, envStack);
+	}
+	
+	private Value evaluateFun(Fun fun, LinkedList<Environment> envStack, List<ParseObject> tailObjects) {
+		tailObjects = Utils.filterComments(tailObjects);
+		
+		List<Symbol> parameterSymbols = fun.getParameterSymbols();
+		
+		int callParamCount = tailObjects.size();
+		int expectedParamCount = parameterSymbols.size();
+		if (callParamCount != expectedParamCount) {
+			String msg = "Function called with " + callParamCount + " arguments instead of the expected " + 
+						  expectedParamCount + " arguments.";
+			throw new EvaluatorException(msg);
+		}
+		
+		List<Value> paramValues = new ArrayList<Value>(tailObjects.size());
+		for (ParseObject tailObject : tailObjects) paramValues.add(evaluate(tailObject, envStack));
+		List<String> parameterSymbolNames = new ArrayList<String>(parameterSymbols.size());
+		for (Symbol symbol : parameterSymbols) parameterSymbolNames.add(symbol.getText());
+		
+		Environment newEnvFrame = new Environment(Utils.zip(parameterSymbolNames, paramValues));
+		envStack.push(newEnvFrame);
+		
 		try {
-			Object retValue = beanShellInterp.get("_RET_");
-			if (retValue == null) return Value.NIL;
-			return new JWrapper(retValue);
+			return evaluate(fun.getBodyCode().getParseObjects(), envStack);
 		} catch (Throwable t) {
-			throw new EvaluatorException("Could not extract _RET_ variable from bean shell.");
+			throw new EvaluatorException("Failed to evaluate function: " + fun, t);
+		} finally {
+			envStack.pop();
 		}
 	}
 	
-	private Value dereferenceSymbol(String symbolName, Stack<Environment> envStack) {
+	private Value dereferenceSymbol(String symbolName, LinkedList<Environment> envStack) {
 		Environment [] envArray = envStack.toArray(new Environment[0]);
 		for (int i = envArray.length - 1; i >= 0; i--) {
 			Environment env = envArray[i];

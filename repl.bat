@@ -1,1 +1,1 @@
-%JAVA_HOME%\bin\java -cp .\lib\*;.\bin isard.steam.repl.SimpleREPL
+%JAVA_HOME%\bin\java -jar steam.jar
